@@ -1,0 +1,8 @@
+[
+  {
+    "sender": "Alice",
+    "receiver": "Bob",
+    "content": "Hello",
+    "timestamp": 1.0
+  }
+]
