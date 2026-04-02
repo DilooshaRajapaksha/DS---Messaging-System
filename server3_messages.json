@@ -1,11 +1,5 @@
 [
   {
-    "sender": "Alice",
-    "receiver": "Bob",
-    "content": "Hello",
-    "timestamp": 1.0
-  },
-  {
     "sender": "Ranjula",
     "receiver": "Diloosha",
     "content": "Hello Diloosha!!",

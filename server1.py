@@ -48,10 +48,29 @@ def send_message(message: Message):
     msg = message.dict()
     messages.append(msg)
     save_messages(FILE_NAME, messages)
+
+    replication_result = {}
+
+    for name, base_url in PEERS.items():
+        try:
+            response = requests.post(f"{base_url}/replicate", json=msg, timeout=2)
+            if response.status_code == 200:
+                replication_result[name] = "replicated"
+                server_status[name] = "alive"
+            else:
+                replication_result[name] = "failed"
+                server_status[name] = "failed"
+        except:
+            replication_result[name] = "failed"
+            server_status[name] = "failed"
+
     return {
-        "message": "Stored in leader only",
-        "data": msg
+        "message": "Stored in leader and sent to backups",
+        "data": msg,
+        "replication": replication_result
     }
+
+
 
 def check_servers():
     while True:
