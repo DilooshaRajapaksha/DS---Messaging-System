@@ -1,0 +1,20 @@
+[
+  {
+    "sender": "Alice",
+    "receiver": "Bob",
+    "content": "Hello",
+    "timestamp": 1.0
+  },
+  {
+    "sender": "Ranjula",
+    "receiver": "Diloosha",
+    "content": "Hello Diloosha!!",
+    "timestamp": 1711459200.0
+  },
+  {
+    "sender": "Hashini",
+    "receiver": "Diloosha",
+    "content": "Bye Diloosha",
+    "timestamp": 120000.0
+  }
+]
