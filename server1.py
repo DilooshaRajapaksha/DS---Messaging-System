@@ -9,18 +9,28 @@ Run with:
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import time, sys, os, json, threading
 import requests
 from Time_sync import SynchronizedClock
+
 
 sys.path.append(os.path.dirname(__file__))
 from storage import Message, MessageStore
 from replication import ReplicationConfig, ReplicationManager
 from consistency import QuorumConfig
 
+app = FastAPI(title="Server 1 - PRIMARY")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ── Setup ─────────────────────────────────────────────────────────────────
-app       = FastAPI(title="Server 1 - PRIMARY")
 SERVER_ID = "server1"
 FILE_NAME = "server1_messages.json"
 

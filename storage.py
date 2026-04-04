@@ -154,8 +154,13 @@ class MessageStore:
 
     def get_by_recipient(self, recipient: str) -> List[Message]:
         """Return all messages for a specific recipient, sorted by timestamp."""
+        normalized_recipient = (recipient or "").strip().lower()
         return sorted(
-            [m for m in self._store.values() if m.recipient == recipient],
+            [
+                m
+                for m in self._store.values()
+                if (m.recipient or "").strip().lower() == normalized_recipient
+            ],
             key=lambda m: m.timestamp
         )
 

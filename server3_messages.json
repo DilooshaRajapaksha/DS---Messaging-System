@@ -1,32 +1,74 @@
 [
   {
-    "sender": "Ranjula",
-    "receiver": "Diloosha",
-    "content": "Hello Diloosha!!",
-    "timestamp": 1711459200.0
-  },
-  {
-    "sender": "Hashini",
-    "receiver": "Diloosha",
-    "content": "Bye Diloosha",
-    "timestamp": 120000.0
-  },
-  {
+    "message_id": "8cf1614a-9a30-4f10-b3b7-d8825e6a51f2",
     "sender": "Ashen",
-    "receiver": "Dilusha",
-    "content": "Hi BRO!",
-    "timestamp": 123456.0
+    "recipient": "Ranjula",
+    "content": "Hi.",
+    "timestamp": 1775331241.821805,
+    "timestamp_readable": "2026-04-05 01:04:01.821",
+    "version": 1,
+    "replication_status": "pending",
+    "replicated_to": [],
+    "status": "stored"
   },
   {
-    "sender": "Dilanka",
-    "receiver": "Sehasie",
-    "content": "Hi sis",
-    "timestamp": 543678.0
+    "message_id": "db727975-e4a0-4ef0-9b4d-a0f43cfc2dfb",
+    "sender": "Bench",
+    "recipient": "ReplicaTiming",
+    "content": "probe 1 536b10bd-4c7b-4895-8f22-a13f9fb70c1f",
+    "timestamp": 1775331416.5680497,
+    "timestamp_readable": "2026-04-05 01:06:56.568",
+    "version": 1,
+    "replication_status": "pending",
+    "replicated_to": [],
+    "status": "stored"
   },
   {
-    "sender": "Gauravi",
-    "receiver": "Ashen",
-    "content": "Good Morning!",
-    "timestamp": 145267.0
+    "message_id": "92e83924-0a95-4124-9079-b65840c68558",
+    "sender": "Bench",
+    "recipient": "ReplicaTiming",
+    "content": "probe 2 0f056a64-dded-4297-b75b-91850aab428b",
+    "timestamp": 1775331424.7075362,
+    "timestamp_readable": "2026-04-05 01:07:04.707",
+    "version": 1,
+    "replication_status": "pending",
+    "replicated_to": [],
+    "status": "stored"
+  },
+  {
+    "message_id": "79937913-1fc8-44c4-ac8b-d157f1b324a1",
+    "sender": "Bench",
+    "recipient": "ReplicaTiming",
+    "content": "probe 3 9eeb195e-73cb-48ce-a94a-cfc28c5ac336",
+    "timestamp": 1775331432.8730552,
+    "timestamp_readable": "2026-04-05 01:07:12.873",
+    "version": 1,
+    "replication_status": "pending",
+    "replicated_to": [],
+    "status": "stored"
+  },
+  {
+    "message_id": "fd14aad6-a4f8-4b68-9c8d-b966ce5db82a",
+    "sender": "Bench",
+    "recipient": "ReplicaTiming",
+    "content": "probe 4 40bcd142-530b-4d9d-9979-268dbec63a2f",
+    "timestamp": 1775331441.0609179,
+    "timestamp_readable": "2026-04-05 01:07:21.060",
+    "version": 1,
+    "replication_status": "pending",
+    "replicated_to": [],
+    "status": "stored"
+  },
+  {
+    "message_id": "422fb936-a0c2-4cbf-860d-69c544d3f104",
+    "sender": "Bench",
+    "recipient": "ReplicaTiming",
+    "content": "probe 5 995c0d60-646b-4b99-abbe-6a30d3acb201",
+    "timestamp": 1775331449.2417574,
+    "timestamp_readable": "2026-04-05 01:07:29.241",
+    "version": 1,
+    "replication_status": "pending",
+    "replicated_to": [],
+    "status": "stored"
   }
 ]
