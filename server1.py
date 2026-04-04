@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import time, sys, os, json, threading
 import requests
+from Time_sync import SynchronizedClock
 
 sys.path.append(os.path.dirname(__file__))
 from storage import Message, MessageStore
@@ -34,6 +35,7 @@ local_store = MessageStore(SERVER_ID)
 config      = ReplicationConfig()
 replicator  = ReplicationManager(local_store, config, SERVER_ID)
 quorum_cfg  = QuorumConfig(total_servers=3)
+clock       = SynchronizedClock(SERVER_ID, is_main_server=True)
 
 replicator.start_background_retry()
 
@@ -111,7 +113,7 @@ def send_message(request: SendMessageRequest):
         sender=    request.sender,
         recipient= request.recipient,
         content=   request.content,
-        timestamp= time.time()
+        timestamp= clock.get_current_timestamp()
     )
     results       = replicator.replicate(msg)
     confirmations = 1 + sum(1 for ok in results.values() if ok)
