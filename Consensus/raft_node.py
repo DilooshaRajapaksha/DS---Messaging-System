@@ -5,7 +5,7 @@ import requests
 import threading
 from enum import Enum
 from typing import List, Dict, Optional
-from Dilanka.models import Message
+from models import Message
 
 class RaftState(Enum):
     FOLLOWER = 1
