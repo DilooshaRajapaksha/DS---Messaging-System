@@ -1,42 +1,31 @@
 """
 server3.py — BACKUP Server
 ============================
-Part 4 of Data Replication & Consistency module.
+MERGED: Your replication/quorum code + teammate's persistent
+storage and /recover endpoint. (Identical role to server2)
 
-Server3 is a BACKUP server (identical role to Server2):
-- Receives replicated copies from Server1 (primary)
-- Clients can READ messages from here
-- Does NOT accept direct client writes (redirects to primary)
-
-Run this server with:
+Run with:
     uvicorn server3:app --host 0.0.0.0 --port 8003 --reload
 """
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import sys
-import os
+import sys, os, json
+import requests
 
 sys.path.append(os.path.dirname(__file__))
 from storage import Message, MessageStore
 
-# ─────────────────────────────────────────────
-# Setup
-# ─────────────────────────────────────────────
+# ── Setup ─────────────────────────────────────────────────────────────────
+app        = FastAPI(title="Server 3 - BACKUP")
+SERVER_ID  = "server3"
+FILE_NAME  = "server3_messages.json"
+LEADER_URL = "http://127.0.0.1:8001"
 
-app       = FastAPI(title="Server 3 - BACKUP")
-SERVER_ID = "server3"
-
-# Part 1 — this server's local store
 local_store = MessageStore(SERVER_ID)
 
-
-# ─────────────────────────────────────────────
-# Request Model
-# ─────────────────────────────────────────────
-
+# ── Request Model ─────────────────────────────────────────────────────────
 class ReplicateRequest(BaseModel):
-    """What the primary sends to this backup when replicating."""
     message_id:         str
     sender:             str
     recipient:          str
@@ -47,10 +36,15 @@ class ReplicateRequest(BaseModel):
     replicated_to:      list = []
     status:             str  = "stored"
 
+# ── Disk persistence ──────────────────────────────────────────────────────
+def persist_to_disk():
+    try:
+        with open(FILE_NAME, "w") as f:
+            json.dump([m.to_dict() for m in local_store.get_all()], f, indent=2)
+    except Exception as e:
+        print(f"[Server3] Disk error: {e}")
 
-# ─────────────────────────────────────────────
-# Original endpoints (kept from teammate's code)
-# ─────────────────────────────────────────────
+# ── Endpoints ─────────────────────────────────────────────────────────────
 
 @app.get("/")
 def home():
@@ -58,20 +52,16 @@ def home():
 
 @app.get("/heartbeat")
 def heartbeat():
-   
-    return {"status": "alive", "server": SERVER_ID}
+    """Teammate's original — kept exactly as is."""
+    return {"status": "alive", "server": "server3"}
 
-
-# ─────────────────────────────────────────────
-# New endpoints (Part 4 additions)
-# ─────────────────────────────────────────────
+@app.get("/status")
+def status():
+    return {"server": SERVER_ID, "role": "backup", "store": local_store.summary()}
 
 @app.post("/replicate")
 def receive_replicated_message(request: ReplicateRequest):
-    """
-    PRIMARY → sends a copy of a message to this backup server.
-
-    """
+    """Receive a copy from primary and save it."""
     msg = Message(
         message_id= request.message_id,
         sender=     request.sender,
@@ -80,52 +70,47 @@ def receive_replicated_message(request: ReplicateRequest):
         timestamp=  request.timestamp,
         version=    request.version,
     )
-
     saved = local_store.save(msg)
-
-    return {
-        "success": True,
-        "saved":   saved,     # False = duplicate, was skipped
-        "server":  SERVER_ID,
-    }
-
+    if saved:
+        persist_to_disk()
+    return {"success": True, "saved": saved, "server": SERVER_ID}
 
 @app.post("/send")
 def send_not_allowed():
-    
-    raise HTTPException(
-        status_code=403,
-        detail={
-            "error":           "This is a backup server — send messages to the primary",
-            "primary_server":  "http://localhost:8001/send",
-        }
-    )
-
+    """Backups reject direct writes — redirect to primary."""
+    raise HTTPException(status_code=403, detail={
+        "error":          "This is a backup — send messages to the primary",
+        "primary_server": "http://localhost:8001/send",
+    })
 
 @app.get("/messages")
 def get_messages(recipient: str):
+    """Read messages for a recipient from this backup."""
+    msgs = local_store.get_by_recipient(recipient)
+    return {"recipient": recipient, "server": SERVER_ID, "count": len(msgs), "messages": [m.to_dict() for m in msgs]}
+
+@app.post("/recover")
+def recover():
     """
-    CLIENT → retrieves messages for a recipient from this backup.
-
+    Teammate's /recover endpoint.
+    When this backup rejoins after a crash, it syncs all
+    missed messages from the primary's /sync endpoint.
     """
-    messages = local_store.get_by_recipient(recipient)
-
-    return {
-        "recipient":   recipient,
-        "server":      SERVER_ID,
-        "count":       len(messages),
-        "messages":    [m.to_dict() for m in messages],
-    }
-
-
-@app.get("/status")
-def status():
-    """
-    Shows the current health of this backup server.
-
-    """
-    return {
-        "server": SERVER_ID,
-        "role":   "backup",
-        "store":  local_store.summary(),
-    }
+    try:
+        response = requests.get(f"{LEADER_URL}/sync", timeout=5)
+        if response.status_code == 200:
+            all_messages = response.json()["messages"]
+            recovered = 0
+            for item in all_messages:
+                msg = Message.from_dict(item)
+                if local_store.save(msg):
+                    recovered += 1
+            persist_to_disk()
+            return {
+                "message":         "Recovery successful",
+                "total_messages":  local_store.count(),
+                "newly_recovered": recovered,
+            }
+        return {"message": "Leader sync failed"}
+    except Exception as e:
+        return {"message": "Recovery failed", "error": str(e)}

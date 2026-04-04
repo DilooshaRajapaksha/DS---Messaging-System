@@ -1,81 +1,83 @@
 """
 server1.py — PRIMARY Server
 ============================
-Part 4 of Data Replication & Consistency module.
+MERGED: Your replication/quorum code + teammate's persistent
+storage, /sync, peer health monitoring.
 
-Server1 is the PRIMARY server:
-- All client WRITES come here first
-- It runs quorum_write() to ensure safety  (Part 3)
-- It replicates messages to Server2 & 3    (Part 2)
-- Stores messages locally                  (Part 1)
-
-Run this server with:
+Run with:
     uvicorn server1:app --host 0.0.0.0 --port 8001 --reload
 """
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-import time
-import sys
-import os
+import time, sys, os, json, threading
+import requests
 
-# ── Import our modules (Parts 1, 2, 3) ───────
 sys.path.append(os.path.dirname(__file__))
 from storage import Message, MessageStore
 from replication import ReplicationConfig, ReplicationManager
-from consistency import QuorumConfig, ConsistencyManager
+from consistency import QuorumConfig
 
-# ─────────────────────────────────────────────
-# Setup
-# ─────────────────────────────────────────────
-
+# ── Setup ─────────────────────────────────────────────────────────────────
 app       = FastAPI(title="Server 1 - PRIMARY")
 SERVER_ID = "server1"
+FILE_NAME = "server1_messages.json"
 
-# Part 1 — this server's local store
+PEERS = {
+    "server2": "http://127.0.0.1:8002",
+    "server3": "http://127.0.0.1:8003"
+}
+
+server_status = {"server2": "unknown", "server3": "unknown"}
+
 local_store = MessageStore(SERVER_ID)
-
-# Part 2 — replication engine (pushes copies to server2 & server3)
 config      = ReplicationConfig()
 replicator  = ReplicationManager(local_store, config, SERVER_ID)
-
-# Part 3 — consistency manager (quorum + dedup)
-# Note: for quorum checks, we only have access to local store here.
-# In a full distributed setup, stores would be shared via a DB.
-# For now, quorum is enforced through replication confirmations.
 quorum_cfg  = QuorumConfig(total_servers=3)
 
-# Start background retry (automatically retry failed replications every 5s)
 replicator.start_background_retry()
 
-
-# ─────────────────────────────────────────────
-# Request / Response Models
-# ─────────────────────────────────────────────
-
+# ── Request Models ────────────────────────────────────────────────────────
 class SendMessageRequest(BaseModel):
-    """What a client sends when posting a new message."""
     sender:    str
     recipient: str
     content:   str
 
 class ReplicateRequest(BaseModel):
-    """What the primary sends to backups when replicating."""
     message_id:         str
     sender:             str
     recipient:          str
     content:            str
     timestamp:          float
-    version:            int   = 1
-    replication_status: str   = "pending"
-    replicated_to:      list  = []
-    status:             str   = "stored"
+    version:            int  = 1
+    replication_status: str  = "pending"
+    replicated_to:      list = []
+    status:             str  = "stored"
 
+# ── Disk persistence (teammate's idea) ────────────────────────────────────
+def persist_to_disk():
+    """Save messages to JSON so they survive server restarts."""
+    try:
+        with open(FILE_NAME, "w") as f:
+            json.dump([m.to_dict() for m in local_store.get_all()], f, indent=2)
+    except Exception as e:
+        print(f"[Server1] Disk error: {e}")
 
-# ─────────────────────────────────────────────
-# Original endpoints (kept from teammate's code)
-# ─────────────────────────────────────────────
+# ── Background peer health monitor (teammate's idea) ──────────────────────
+def check_servers():
+    """Check backup heartbeats every 3 seconds."""
+    while True:
+        for name, url in PEERS.items():
+            try:
+                r = requests.get(f"{url}/heartbeat", timeout=2)
+                server_status[name] = "alive" if r.status_code == 200 else "failed"
+            except:
+                server_status[name] = "failed"
+        time.sleep(3)
+
+threading.Thread(target=check_servers, daemon=True).start()
+
+# ── Endpoints ─────────────────────────────────────────────────────────────
 
 @app.get("/")
 def home():
@@ -83,61 +85,58 @@ def home():
 
 @app.get("/heartbeat")
 def heartbeat():
-    
-    return {"status": "alive", "server": SERVER_ID}
+    """Teammate's original — kept exactly as is."""
+    return {"status": "alive", "server": "server1"}
 
-
-# ─────────────────────────────────────────────
-# New endpoints (Part 4 additions)
-# ─────────────────────────────────────────────
+@app.get("/status")
+def status():
+    """Your quorum/store status + teammate's peer health."""
+    return {
+        "server":      SERVER_ID,
+        "role":        "primary",
+        "peer_health": server_status,
+        "store":       local_store.summary(),
+        "replication": replicator.status(),
+        "quorum": {
+            "total_servers": quorum_cfg.total_servers,
+            "write_quorum":  quorum_cfg.write_quorum,
+            "read_quorum":   quorum_cfg.read_quorum,
+        },
+    }
 
 @app.post("/send")
 def send_message(request: SendMessageRequest):
-    """
-    CLIENT → sends a new message through this primary server.
-    """
-    # Step 1: Create message
+    """Client sends message → quorum write → replicate to backups."""
     msg = Message(
         sender=    request.sender,
         recipient= request.recipient,
         content=   request.content,
         timestamp= time.time()
     )
-
-    # Step 2: Replicate (saves locally + pushes to backups)
-    results = replicator.replicate(msg)
-
-    # Count confirmations (primary + successful backups)
+    results       = replicator.replicate(msg)
     confirmations = 1 + sum(1 for ok in results.values() if ok)
+    persist_to_disk()
 
-    # Check quorum
     if not quorum_cfg.is_write_quorum_met(confirmations):
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "error":          "Quorum not met — not enough servers available",
-                "confirmations":  confirmations,
-                "quorum_needed":  quorum_cfg.write_quorum,
-                "message_id":     msg.message_id,
-            }
-        )
+        raise HTTPException(status_code=503, detail={
+            "error":         "Quorum not met",
+            "confirmations": confirmations,
+            "quorum_needed": quorum_cfg.write_quorum,
+        })
 
     return {
         "success":        True,
         "message_id":     msg.message_id,
         "confirmations":  confirmations,
         "quorum_met":     True,
-        "replicated_to":  [SERVER_ID] + [sid for sid, ok in results.items() if ok],
-        "failed_servers": [sid for sid, ok in results.items() if not ok],
+        "replicated_to":  [SERVER_ID] + [s for s, ok in results.items() if ok],
+        "failed_servers": [s for s, ok in results.items() if not ok],
         "timestamp":      msg.timestamp,
     }
 
-
 @app.post("/replicate")
 def receive_replicated_message(request: ReplicateRequest):
-    """
-    PRIMARY → sends a copy of a message to this server (backup).
-    """
+    """Receive a replicated copy from primary."""
     msg = Message(
         message_id= request.message_id,
         sender=     request.sender,
@@ -146,49 +145,18 @@ def receive_replicated_message(request: ReplicateRequest):
         timestamp=  request.timestamp,
         version=    request.version,
     )
-
     saved = local_store.save(msg)
-
-    return {
-        "success": True,
-        "saved":   saved,           # False means it was a duplicate → skipped
-        "server":  SERVER_ID,
-    }
-
+    if saved:
+        persist_to_disk()
+    return {"success": True, "saved": saved, "server": SERVER_ID}
 
 @app.get("/messages")
 def get_messages(recipient: str):
-    """
-    CLIENT → retrieves all messages for a specific recipient.
+    """Read messages for a recipient."""
+    msgs = local_store.get_by_recipient(recipient)
+    return {"recipient": recipient, "count": len(msgs), "messages": [m.to_dict() for m in msgs]}
 
-    """
-    messages = local_store.get_by_recipient(recipient)
-
-    if not messages:
-        return {
-            "recipient": recipient,
-            "count":     0,
-            "messages":  [],
-        }
-
-    return {
-        "recipient": recipient,
-        "count":     len(messages),
-        "messages":  [m.to_dict() for m in messages],
-    }
-
-
-@app.get("/status")
-def status():
-    
-    return {
-        "server":       SERVER_ID,
-        "role":         "primary",
-        "store":        local_store.summary(),
-        "replication":  replicator.status(),
-        "quorum": {
-            "total_servers": quorum_cfg.total_servers,
-            "write_quorum":  quorum_cfg.write_quorum,
-            "read_quorum":   quorum_cfg.read_quorum,
-        },
-    }
+@app.get("/sync")
+def sync_messages():
+    """Teammate's /sync — backups call this to recover all messages after rejoining."""
+    return {"messages": [m.to_dict() for m in local_store.get_all()]}
