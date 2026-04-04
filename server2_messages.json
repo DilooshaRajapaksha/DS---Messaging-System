@@ -1,8 +1,38 @@
 [
   {
+    "sender": "Alice",
+    "receiver": "Bob",
+    "content": "Hello",
+    "timestamp": 1.0
+  },
+  {
     "sender": "Ranjula",
     "receiver": "Diloosha",
     "content": "Hello Diloosha!!",
     "timestamp": 1711459200.0
+  },
+  {
+    "sender": "Hashini",
+    "receiver": "Diloosha",
+    "content": "Bye Diloosha",
+    "timestamp": 120000.0
+  },
+  {
+    "sender": "Ashen",
+    "receiver": "Dilusha",
+    "content": "Hi BRO!",
+    "timestamp": 123456.0
+  },
+  {
+    "sender": "Dilanka",
+    "receiver": "Sehasie",
+    "content": "Hi sis",
+    "timestamp": 543678.0
+  },
+  {
+    "sender": "Gauravi",
+    "receiver": "Ashen",
+    "content": "Good Morning!",
+    "timestamp": 145267.0
   }
 ]

@@ -43,6 +43,10 @@ def status():
 def get_messages():
     return {"messages": messages}
 
+@app.get("/sync")
+def sync_messages():
+    return {"messages": messages}
+
 @app.post("/send")
 def send_message(message: Message):
     msg = message.dict()
