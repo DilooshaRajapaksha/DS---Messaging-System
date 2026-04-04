@@ -482,6 +482,8 @@
 const PRIMARY    = 'http://127.0.0.1:8001';
 let   readServer = 'http://127.0.0.1:8001';
 let   currentRecipient = '';
+const SEND_TIMEOUT_MS = 15000;
+const FETCH_TIMEOUT_MS = 8000;
 
 // ── Utility ─────────────────────────────────────────
 function log(msg, type = '') {
@@ -558,7 +560,7 @@ async function sendMessage() {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ sender, recipient, content }),
-      signal:  AbortSignal.timeout(5000)
+      signal:  AbortSignal.timeout(SEND_TIMEOUT_MS)
     });
 
     const d = await r.json();
@@ -569,8 +571,10 @@ async function sendMessage() {
       toast(`✅ Message sent! Replicated to ${d.confirmations} servers`, 'ok');
       document.getElementById('msgInput').value = '';
 
-      // auto-fetch if same recipient is shown
-      if (currentRecipient === recipient) fetchMessages();
+      // Always show the latest sent conversation immediately.
+      document.getElementById('recipientFilter').value = recipient;
+      currentRecipient = recipient;
+      await fetchMessages({ recipient, serverUrl: PRIMARY, serverName: 'server1' });
       checkAllHealth();
     } else {
       const err = d.detail?.error || JSON.stringify(d.detail) || 'Unknown error';
@@ -587,23 +591,27 @@ async function sendMessage() {
 }
 
 // ── Fetch Messages ────────────────────────────────────
-async function fetchMessages() {
-  const recipient = document.getElementById('recipientFilter').value.trim();
+async function fetchMessages(options = {}) {
+  const recipient = (options.recipient ?? document.getElementById('recipientFilter').value).trim();
   if (!recipient) {
     toast('Enter a recipient name to fetch messages', 'err');
     return;
   }
 
   currentRecipient = recipient;
-  const serverName = document.querySelector('.srv-btn.active')?.textContent || 'server1';
+  const serverUrl  = options.serverUrl || readServer;
+  const serverName = options.serverName || document.querySelector('.srv-btn.active')?.textContent || 'server1';
   document.getElementById('chatLabel').textContent = `Messages for "${recipient}" — via ${serverName}`;
   log(`📥 Fetching messages for "${recipient}" from ${serverName}...`, 'info');
 
   try {
     const r = await fetch(
-      `${readServer}/messages?recipient=${encodeURIComponent(recipient)}`,
-      { signal: AbortSignal.timeout(5000) }
+      `${serverUrl}/messages?recipient=${encodeURIComponent(recipient)}`,
+      { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
     );
+    if (!r.ok) {
+      throw new Error(`HTTP ${r.status}`);
+    }
     const d = await r.json();
     renderMessages(d.messages || [], recipient);
     log(`✅ Got ${d.count} message(s) for "${recipient}"`, 'ok');

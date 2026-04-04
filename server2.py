@@ -15,7 +15,7 @@ import sys, os, json
 import requests
 
 sys.path.append(os.path.dirname(__file__))
-from storage import Message, MessageStore
+from storage import Message, MessageStore, ReplicationStatus  # ← added ReplicationStatus
 
 app = FastAPI(title="Server 2 - BACKUP")
 
@@ -27,8 +27,8 @@ app.add_middleware(
 )
 
 # ── Setup ─────────────────────────────────────────────────────────────────
-SERVER_ID = "server2"
-FILE_NAME = "server2_messages.json"
+SERVER_ID  = "server2"
+FILE_NAME  = "server2_messages.json"
 LEADER_URL = "http://127.0.0.1:8001"
 
 local_store = MessageStore(SERVER_ID)
@@ -70,14 +70,16 @@ def status():
 
 @app.post("/replicate")
 def receive_replicated_message(request: ReplicateRequest):
-    """Receive a copy from primary and save it."""
+    """Receive a copy from primary and save it with correct replication status."""
     msg = Message(
-        message_id= request.message_id,
-        sender=     request.sender,
-        recipient=  request.recipient,
-        content=    request.content,
-        timestamp=  request.timestamp,
-        version=    request.version,
+        message_id=         request.message_id,
+        sender=             request.sender,
+        recipient=          request.recipient,
+        content=            request.content,
+        timestamp=          request.timestamp,
+        version=            request.version,
+        replication_status= ReplicationStatus.REPLICATED,  # ← updated
+        replicated_to=      request.replicated_to,          # ← updated
     )
     saved = local_store.save(msg)
     if saved:
@@ -117,9 +119,9 @@ def recover():
                     recovered += 1
             persist_to_disk()
             return {
-                "message":          "Recovery successful",
-                "total_messages":   local_store.count(),
-                "newly_recovered":  recovered,
+                "message":         "Recovery successful",
+                "total_messages":  local_store.count(),
+                "newly_recovered": recovered,
             }
         return {"message": "Leader sync failed"}
     except Exception as e:

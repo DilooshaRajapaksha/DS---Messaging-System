@@ -15,7 +15,7 @@ import sys, os, json
 import requests
 
 sys.path.append(os.path.dirname(__file__))
-from storage import Message, MessageStore
+from storage import Message, MessageStore, ReplicationStatus  # ← added ReplicationStatus
 
 app = FastAPI(title="Server 3 - BACKUP")
 
@@ -70,14 +70,16 @@ def status():
 
 @app.post("/replicate")
 def receive_replicated_message(request: ReplicateRequest):
-    """Receive a copy from primary and save it."""
+    """Receive a copy from primary and save it with correct replication status."""
     msg = Message(
-        message_id= request.message_id,
-        sender=     request.sender,
-        recipient=  request.recipient,
-        content=    request.content,
-        timestamp=  request.timestamp,
-        version=    request.version,
+        message_id=         request.message_id,
+        sender=             request.sender,
+        recipient=          request.recipient,
+        content=            request.content,
+        timestamp=          request.timestamp,
+        version=            request.version,
+        replication_status= ReplicationStatus.REPLICATED,  # ← updated
+        replicated_to=      request.replicated_to,          # ← updated
     )
     saved = local_store.save(msg)
     if saved:
