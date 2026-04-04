@@ -1,38 +1,34 @@
 [
   {
-    "sender": "Alice",
-    "receiver": "Bob",
-    "content": "Hello",
-    "timestamp": 1.0
-  },
-  {
-    "sender": "Ranjula",
-    "receiver": "Diloosha",
-    "content": "Hello Diloosha!!",
-    "timestamp": 1711459200.0
-  },
-  {
-    "sender": "Hashini",
-    "receiver": "Diloosha",
-    "content": "Bye Diloosha",
-    "timestamp": 120000.0
-  },
-  {
+    "message_id": "a41bcbbf-4719-42d3-b6b2-89295e4e962b",
     "sender": "Ashen",
-    "receiver": "Dilusha",
-    "content": "Hi BRO!",
-    "timestamp": 123456.0
+    "recipient": "Ranjula",
+    "content": "Hey.",
+    "timestamp": 1775328978.774185,
+    "timestamp_readable": "2026-04-05 00:26:18.774",
+    "version": 1,
+    "replication_status": "replicated",
+    "replicated_to": [
+      "server1",
+      "server2",
+      "server3"
+    ],
+    "status": "stored"
   },
   {
-    "sender": "Dilanka",
-    "receiver": "Sehasie",
-    "content": "Hi sis",
-    "timestamp": 543678.0
-  },
-  {
-    "sender": "Gauravi",
-    "receiver": "Ashen",
-    "content": "Good Morning!",
-    "timestamp": 145267.0
+    "message_id": "9b9936fc-b09e-4d22-b64c-a29a85b79729",
+    "sender": "Ashen",
+    "recipient": "Ranjula",
+    "content": "Hey.",
+    "timestamp": 1775329015.6021273,
+    "timestamp_readable": "2026-04-05 00:26:55.602",
+    "version": 1,
+    "replication_status": "replicated",
+    "replicated_to": [
+      "server1",
+      "server2",
+      "server3"
+    ],
+    "status": "stored"
   }
 ]

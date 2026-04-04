@@ -9,6 +9,7 @@ Run with:
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sys, os, json
 import requests
@@ -16,8 +17,16 @@ import requests
 sys.path.append(os.path.dirname(__file__))
 from storage import Message, MessageStore
 
+app = FastAPI(title="Server 3 - BACKUP")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ── Setup ─────────────────────────────────────────────────────────────────
-app        = FastAPI(title="Server 3 - BACKUP")
 SERVER_ID  = "server3"
 FILE_NAME  = "server3_messages.json"
 LEADER_URL = "http://127.0.0.1:8001"
