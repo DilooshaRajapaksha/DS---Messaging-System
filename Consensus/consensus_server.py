@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from raft_node import RaftNode, RaftState
 from models import Message, MessageStore
-from Time_Synch.Time_sync import SynchronizedClock
+from Time_sync import SynchronizedClock
 import asyncio
 import os
 import sys
